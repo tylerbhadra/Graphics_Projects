@@ -1,7 +1,688 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-1 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    background-color: white;
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+  m1 {
+    font-family:'Times New Roman', Times, serif;
+    font-size: 18px;
+  }
+  c1 {
+    font-family:'Courier New', Courier, monospace;
+  }
+  kbd {
+    color: #121212;
+  }
+</style>
+<title>CS 184 Path Tracer</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+
+<script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']]
+    }
+  };
+</script>
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
+
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2023</h1>
+<h1 align="middle">Project 3-1: Path Tracer</h1>
+<h2 align="middle">Tyler Bhadra, Victor Zhang</h2>
+
+<!-- Add Website URL
+<h2 align="middle">Website URL: <a href="TODO">TODO</a></h2> -->
+
+<br><br>
+
+
+<div align="center">
+  <table style="width=100%">
+      <tr>
+          <td align="middle">
+          <img src="images/example_image.png" width="480px" />
+          <figcaption align="middle">Results Caption: my bunny is the bounciest bunny</figcaption>
+      </tr>
+  </table>
+</div>
+
+<!-- <p>All of the text in your write-up should be <em>in your own words</em>. If you need to add additional HTML features to this document, you can search the <a href="http://www.w3schools.com/">http://www.w3schools.com/</a> website for instructions. To edit the HTML, you can just copy and paste existing chunks and fill in the text and image file names appropriately.</p>
+<o>The website writeup is intended to be a self-contained walkthrough of the assignment: we want this to be a piece of work which showcases your understanding of relevant concepts through both mesh images as well as written explanations about what you did to complete each part of the assignment. Try to be as clear and organized as possible when writing about your own output files or extensions to the assignment. We want to understand what you've achieved and how you've done it!</p> 
+<p>If you are well-versed in web development, feel free to ditch this template and make a better looking page.</p>
+
+
+<p>Here are a few problems students have encountered in the past. Test your website on the instructional machines early!</p>
+<ul>
+<li>Your main report page should be called index.html.</li>
+<li>Be sure to include and turn in all of the other files (such as images) that are linked in your report!</li>
+<li>Use only <em>relative</em> paths to files, such as <pre>"./images/image.jpg"</pre>
+Do <em>NOT</em> use absolute paths, such as <pre>"/Users/student/Desktop/image.jpg"</pre></li>
+<li>Pay close attention to your filename extensions. Remember that on UNIX systems (such as the instructional machines), capitalization matters. <pre>.png != .jpeg != .jpg != .JPG</pre></li>
+<li>Be sure to adjust the permissions on your files so that they are world readable. For more information on this please see this tutorial: <a href="http://www.grymoire.com/Unix/Permissions.html">http://www.grymoire.com/Unix/Permissions.html</a></li>
+<li>And again, test your website on the instructional machines early!</li>
+</ul>
+
+
+<p>Here is an example of how to include a simple formula:</p>
+<p align="middle"><pre align="middle">a^2 + b^2 = c^2</pre></p>
+<p>or, alternatively, you can include an SVG image of a LaTex formula.</p>
+
+<div> -->
+
+<h2 align="middle">Overview</h2>
+<p>
+    For this project we implemented the core routines of a physically-based renderer that uses a path-tracing algorithm. The first of these 
+    core routines was ray-scene intersection, which allowed us to calculate intersection points between camera rays and objects in the scene.
+    The second was acceleration structures, such as the bounding volume hierarchy which minimized the number of ray intersections we had to
+    compute, speeding up rendering time significantly. The third and fourth were direct and global illumination calculations, using Monte Carlo 
+    integration and various sampling methods, for more realistic lighting. The last was adaptive sampling which optimized the number of samples
+    taken per pixel by checking for convergence.
+</p>
+<br>
+
+<h2 align="middle">Part 1: Ray Generation and Scene Intersection</h2>
+<!-- Walk through the ray generation and primitive intersection parts of the rendering pipeline.
+Explain the triangle intersection algorithm you implemented in your own words.
+Show images with normal shading for a few small .dae files. -->
+
+<!-- <h3>
+  Walk through the ray generation and primitive intersection parts of the rendering pipeline.
+</h3> -->
+<p>
+    A physically-based renderer relies on the physical model of light which describes light as rays that travel in straight
+    lines from light sources (such as light fixtures or the sun), bouncing off of objects in the world into our camera lens.
+    Modeling scenes in this way allows us to get very realistic renderings of images. However, computing lighting calculations
+    for every conceivable ray in our scene and figuring out which ones reflect back into our imaginary camera would be impossible
+    to properly and efficiently implement.
+</p>
+<p>
+    To solve this, we can model light as a ray (<c1>Vector3D</c1>) that we shoot out from our imaginary camera lens through each
+    pixel of the image plane and out into the scene. This allows us to trace shadow rays from hit points to test for light visibility,
+    then fill in that particular pixel with a color value that is weighted by the calculated lighting contributions along our camera ray. 
+</p>
+<p>
+    To do this we can take points from each pixel in image space (The coordinate system for the image) and project them into camera space (The 
+    coordinate system for the camera) using a series of translations and scales. If we multiply this point in camera space by 
+    the camera-to-world rotation matrix we can project the camera space point (the point we shoot the ray through from the camera 
+    origin) out into world space (The coordinate system the whole scene uses). From here we can test the camera ray for intersection
+    with objects that are situated in the scene. This is achieved by solving for intersection points using the ray equation 
+    (<m1>r(<i>t</i>) = o + <i>t</i>d, 0 &leq; t &lt &infin;</m1>), plane equation (<m1>(p - p') • N = 0</m1>), and other equations
+    for primitive objects such as spheres (<m1>(p - c)<sup>2</sup> - <i>R</i><sup>2</sup> = 0</m1>).
+</p>
+<br>
+
+<!-- <h3>
+  Explain the triangle intersection algorithm you implemented in your own words.
+</h3> -->
+<p>
+    In order to test a ray for intersection with a triangle we used the M&oumlller Trumbore algorithm, as shown below:
+</p>
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/MollerTrumboreAlgo.png" align="middle" width="400px"/>
+        <figcaption>The M&oumlller Trumbore Algorithm</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+  This allows us to express the plane intersection point of a ray as a set of barycentric coordinates for the triangle
+  (<m1>P<sub>0</sub>, P<sub>1</sub>, P<sub>2</sub></m1>) within that plane, where <m1>&alpha; = 1 - b<sub>1</sub> - b<sub>2</sub></m1>, 
+  <m1>&beta; = b<sub>1</sub></m1>, and <m1>&gamma; = b<sub>2</sub></m1>. Therefore, if <m1>t</m1> lies between <c1>min_t</c1>
+  and <c1>max_t</c1> of our ray (Which represents the "beginning" and "end" of the ray segment), and <m1>&alpha;</m1>, 
+  <m1>&beta;</m1> and <m1>&gamma;</m1> all lie between <m1>0</m1> and <m1>1</m1> then we know that this ray intersects with
+  this particular triangle. For each intersection we store the <m1><i>t</i></m1>-value of the input ray where the intersection
+  occurs, the surface normal at the intersection (which we calculate by interpolating the vertex normals of the triangle <m1>n<sub>1</sub>, 
+  n<sub>2</sub>, and n<sub>3</sub></m1> using the above barycentric coordinates), a pointer to the primitve itself, and lastly a pointer
+  to the Bidirectional Scattering Distribution Function (BSDF), or surface material, of that primitive.
+</p>
+<br>
+
+<!-- <h3>
+  Show images with normal shading for a few small .dae files.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/bunny.png" align="middle" width="500px"/>
+        <figcaption>bunny.dae</figcaption>
+      </td>
+      <td>
+        <img src="images/dragon.png" align="middle" width="500px"/>
+        <figcaption>dragon.dae</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/CBEmpty.png" align="middle" width="500px"/>
+        <figcaption>CBempty.dae</figcaption>
+      </td>
+      <td>
+        <img src="images/CBSpheres.png" align="middle" width="500px"/>
+        <figcaption>CBspheres_lambertian.dae</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+
+
+<h2 align="middle">Part 2: Bounding Volume Hierarchy</h2>
+<!-- Walk through your BVH construction algorithm. Explain the heuristic you chose for picking the splitting point.
+Show images with normal shading for a few large .dae files that you can only render with BVH acceleration.
+Compare rendering times on a few scenes with moderately complex geometries with and without BVH acceleration. Present your results in a one-paragraph analysis. -->
+
+<!-- <h3>
+  Walk through your BVH construction algorithm. Explain the heuristic you chose for picking the splitting point.
+</h3> -->
+<p>
+  Our recursive BVH construction algorithm takes a set of primitives from the scene and initializes a <c1>BVHNode</c1>
+  with a bounding box, <c1>bbox</c1>, that encapsulates them. Once the node is initialized, we check that the number of primitives
+  in this node is at most <c1>max_leaf_size</c1>. If it is, we know that we've reached a leaf node and can terminate the recursion. If
+  not we partition the node along the widest dimension of the bounding box at the average centroid point of all the primitives in the node.
+  Then we do an in-place sort on the set of primitives by their centroid point along the partitioned axis. This allows us to store all the
+  primitives of the left node before the primitives of the right node, letting us define each child by recursing on the left and right halves
+  of the set of primitives.
+</p>
+<br>
+
+<!-- <h3>
+  Show images with normal shading for a few large .dae files that you can only render with BVH acceleration.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/wall-e_ns.png" align="middle" width="500px"/>
+        <figcaption>wall-e.dae, 240326 primitives (0.1519s)</figcaption>
+      </td>
+      <td>
+        <img src="images/CBLucy.png" align="middle" width="500px"/>
+        <figcaption>CBLucy.dae, 133796 primitives (0.0928s)</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/CBdragon.png" align="middle" width="500px"/>
+        <figcaption>CBdragon.dae, 100012 primitives (0.0839s)</figcaption>
+      </td>
+      <td>
+        <img src="images/maxplanck.png" align="middle" width="500px"/>
+        <figcaption>maxplanck.dae, 50801 primitives (0.1827s)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/cow.png" align="middle" width="500px"/>
+        <figcaption>cow.dae, 5856 primitives (0.1363s)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+
+<!-- <h3>
+  Compare rendering times on a few scenes with moderately complex geometries with and without BVH acceleration. Present your results in a one-paragraph analysis.
+</h3> -->
+<p>
+  After implementing the Bounding Volume Hierarchy (BVH) we were able to render scenes significantly faster than when we were rendering
+  them with the naive method of exhaustively testing for ray intersections with every single primitive. For example, without the BVH <i>cow.dae</i>
+  took 301.57s to completely render (~5 minutes). With the BVH, it took only 0.1363s to fully render. Larger files like <i>CBLucy.dae</i> were practically
+  impossible to render on our local machines without the BVH. Partitioning the primitives into a hierarchical tree structure of 
+  bounding boxes allows us to efficiently traverse the spatial area of the scene in order to find the small set of primitives actually intersected by
+  a particular ray in logarithmic time. This is because we can ignore entire collections of primitives if the ray of interest does not intersect
+  with the bounding box of a <c1>BVHNode</c1>. This let's us avoid a very large number of unecessary computations for primitives that the ray never intersects.
+</p>
+<br>
+
+<p>
+  In order to more optimally partition nodes in the BVH we utilized a binned surface area heuristic during BVH construction. Essentially, we split each 
+  node's bounding box into <m1>B</m1> uniform partition planes which define <m1>B - 1</m1> canonical ways of splitting the set of primitives into two halves.
+  For each of these possible partitions we evaluate the <m1>SAH</m1> value as <c1>C_trav + SA(L)*prim_count_left + SA(R)*prim_count_right</c1>, where <c1>C_trav</c1>
+  is the ratio of the cost to traverse the BVH to the cost of intersecting a primitive, and <c1>SA(node)</c1> is the surface area of a node's <c1>bbox</c1>. We 
+  repeat this process for each axis and choose the partition which incurs the least cost. (For our implementation we used <m1>B = 32</m1>)
+</p>
+<p>
+  With this new heuristic we made marginal improvements to rendering speed, but were still able to reduce the number of intersection tests per ray. This reduction is 
+  more significant for files where there is a more uneven distribution of primitives (i.e. odd geometry, more protrusions, etc...) like <i>CBLucy.dae</i>
+  where there is more to be gained from making smart partitions as we can reduce the amount of empty space included in the bounding boxes of nodes, letting us
+  ignore nodes which we would have otherwise had to explore if we used a worse heuristic (i.e. Nodes we need to check in situations where the ray intersects 
+  the bounding box, but still misses all of the primitives contained within).
+</p>
+
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/Heuristic_Performance_Measurements.png" align="middle" width="800px"/>
+        <figcaption>Heuristic Performance Measurements</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part 3: Direct Illumination</h2>
+<!-- Walk through both implementations of the direct lighting function.
+Show some images rendered with both implementations of the direct lighting function.
+Focus on one particular scene with at least one area light and compare the noise levels in soft shadows when rendering with 1, 4, 16, and 64 light rays (the -l flag) and with 1 sample per pixel (the -s flag) using light sampling, not uniform hemisphere sampling.
+Compare the results between uniform hemisphere sampling and lighting sampling in a one-paragraph analysis. -->
+
+<!-- <h3>
+  Walk through both implementations of the direct lighting function.
+</h3> -->
+<p>
+  For Uniform Hemisphere Sampling, we first get a direction vector uniformly at random from the hemisphere coordinate system for the hit point.
+  We take that vector and change it to the world's coordinate system and create a ray that can be tested for intersection against the bounding volume
+  hierarchy. If it intersects, we get the emission of the intersected object, the BSDF of the hit point, and the cosine angle of the hemisphere sample.
+  We multiply these together and add these according to the Monte Carlo estimator and repeat this process until we have the desired number of samples.
+  After all the samples have been taken, we can account for the constant PDF (2&pi;) by multiplying by the PDF and then we return the result divided by
+  the number of samples taken. 
+</p>
+<p>
+  For Light Importance Sampling, we go through every light in the scene. Point lights are sampled once whereas area lights are sampled
+  <c1>ns_area_light</c1> times. Each time we sample a light, we call its <c1>sample_L</c1> function that returns its radiance given the
+  hit point, while also giving us the direction between the light and the point, the distance between the two, and the pdf. We use the direction to
+  create a ray and use that ray to check for intersection in the BVH. This time, we want to see that the ray doesn't intersect anything at all
+  between the light and the point. If it does, the point is in the shadow of the light. Otherwise, we get the BSDF of the point and the cosine of 
+  the angle and multiply this together with the radiance and divide by the pdf. For area lights, we take all their radiances from the different samples 
+  and average them before adding. We add all of these samples together and return the sum.
+</p>
+
+<!-- <h3>
+  Show some images rendered with both implementations of the direct lighting function.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <table style="width:100%">
+    <!-- Header -->
+    <tr align="center">
+      <th>
+        <b>Uniform Hemisphere Sampling</b>
+      </th>
+      <th>
+        <b>Light Sampling</b>
+      </th>
+    </tr>
+    <br>
+    <tr align="center">
+      <td>
+        <img src="images/bunny_hemisphere.png" align="middle" width="400px"/>
+        <figcaption>CBbunny.dae</figcaption>
+      </td>
+      <td>
+        <img src="images/bunny_importance.png" align="middle" width="400px"/>
+        <figcaption>CBbunny.dae</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr align="center">
+      <td>
+        <img src="images/CBspheres_lambertian_64_32_H.png" align="middle" width="400px"/>
+        <figcaption>CBspheres_lambertian.dae</figcaption>
+      </td>
+      <td>
+        <img src="images/CBspheres_lambertian_64_32.png" align="middle" width="400px"/>
+        <figcaption>CBspheres_lambertian.dae</figcaption>
+      </td>
+    </tr>
+    <br>
+  </table>
+</div>
+<br>
+
+<!-- <h3>
+  Focus on one particular scene with at least one area light and compare the noise levels in <b>soft shadows</b> when rendering with 1, 4, 16, and 64 light rays (the -l flag) and with 1 sample per pixel (the -s flag) using light sampling, <b>not</b> uniform hemisphere sampling.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/dragon_1s1l.png" align="middle" width="400px"/>
+        <figcaption>1 Light Ray (dragon.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/dragon_1s4l.png" align="middle" width="400px"/>
+        <figcaption>4 Light Rays (dragon.dae)</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/dragon_1s16l.png" align="middle" width="400px"/>
+        <figcaption>16 Light Rays (dragon.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/dragon_1s64l.png" align="middle" width="400px"/>
+        <figcaption>64 Light Rays (dragon.dae)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+    <!-- YOUR EXPLANATION GOES HERE -->
+    The changing number of light rays changes the number of samples we take of area lights. At lower counts, each point in space has noisier
+    radiance due to the fact that if that spot samples an area of the light that isn't blocked and its neighbor samples a different area of the 
+    light that is blocked or has a different value for <c1>L_out</c1> then that results in noise. As the number of light samples increases, the 
+    noise decreases and even though we have a low number of camera rays per pixel, the brightess of each general area that a pixel would sample
+    from is is pretty close in brightness due to the decreasing noise which makes allows for some of the smaller details of the dragon like the 
+    texture of its belly to be noticeable at higher numbers of light rays whereas it looks like a pixelated mess at 1 light ray.
+</p>
+<br>
+
+<!-- <h3>
+  Compare the results between uniform hemisphere sampling and lighting sampling in a one-paragraph analysis.
+</h3> -->
+<p>
+  The hemisphere sampling is noticeably more noisy than the light sampling due to the random nature of the sampling that can make the radiance
+  vary wildly due to the randomness of where the ray lands. The only light in both scenes is the ceiling light so every spot's brightness will vary vastly
+  from neighboring areas if it samples more of the light with its limited number of random samples. Light sampling only samples the lights for each
+  spot instead of sampling random directions. Specifically, it samples different areas of the light. The noise seems to take form as spots being darker than
+  they should be, which is why in the light sampling images, he scene as a whole seems brighter. The light also doesn't "bleed" through the edges in the
+  light sampled images. 
+</p>
+<br>
+
+
+<h2 align="middle">Part 4: Global Illumination</h2>
+<!-- Walk through your implementation of the indirect lighting function.
+Show some images rendered with global (direct and indirect) illumination. Use 1024 samples per pixel.
+Pick one scene and compare rendered views first with only direct illumination, then only indirect illumination. Use 1024 samples per pixel. (You will have to edit PathTracer::at_least_one_bounce_radiance(...) in your code to generate these views.)
+For CBbunny.dae, compare rendered views with max_ray_depth set to 0, 1, 2, 3, and 100 (the -m flag). Use 1024 samples per pixel.
+Pick one scene and compare rendered views with various sample-per-pixel rates, including at least 1, 2, 4, 8, 16, 64, and 1024. Use 4 light rays.
+You will probably want to use the instructional machines for the above renders in order to not burn up your own computer for hours. -->
+
+<!-- <h3>
+  Walk through your implementation of the indirect lighting function.
+</h3> -->
+<p>
+  In order to implement indirect lighting we recursively bounced rays off of intersected surfaces. This lets us more accurately simulate the behavior of 
+  light rays which are reflected off of both illuminated and shadowed surfaces many times (rather than only from areas that are directly illuminated) before 
+  entering the camera. Thus, the gobal radiance reflected back into the camera is the accumulation of radiance measured at all of the reflected hit points
+  of the inverse camera ray. 
+</p>
+<p>
+  The bulk of our indirect lighting algorithm lies in the function <c1>Pathtracer::at_least_one_bounce_radiance</c1> which calculates  
+  the one bounce radiance of a ray in addition to the accumulated radiance from extra bounces. In this function we use Russian Roulette, with a <c1>cpdf</c1>
+  of <c1>0.7</c1> to randomly terminate recursion before reaching the max recursion depth of <c1>max_ray_depth</c1>, which is a depth variable stored in the
+  <c1>Ray</c1> object. For a particular ray, we first add the <c1>one_bounce_radiance</c1> to <c1>L_out</c1>, then sample a cosine weighted, 
+  hemispheric direction, <c1>w_in</c1> (We sample <c1>w_in</c1> since we are tracing inverse rays) for a new ray using the BSDF of the intersected primitive 
+  (Using <c1>DiffuseBSDF::sample_f</c1>). This also gives us a <c1>pdf</c1> as well as the reflectance value, <c1>bsdf_sample</c1>, which we will use later 
+  in our calculations. After this we check that the depth of this particular ray is greater than one, that the <c1>pdf</c1> is not equal to zero, and that we 
+  can recurse as dictated by the <c1>cpdf</c1>. If all of the above is true, we generate a new ray originating from the <c1>hit_pt</c1> of the current ray in 
+  the direction of <c1>w_in</c1> with a <c1>depth</c1> value one less than the current ray, then test for intersection with a scene object. If there is an 
+  intersection we recurse on this ray, scale the value of its returned radiance by our BSDF sample and a cosine factor, then divide by the <c1>pdf</c1> 
+  and <c1>cpdf</c1>.
+</p>
+<br>
+
+<!-- <h3>
+  Show some images rendered with global (direct and indirect) illumination. Use 1024 samples per pixel.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <figcaption>Scenes Rendered with Global Illumination (1024 samples/pixel, max ray depth = 5, 480x360)</figcaption>
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/bunny_1024s_480x360.png" align="middle" width="500px"/>
+        <figcaption>CBbunny.dae</figcaption>
+      </td>
+      <td>
+        <img src="images/CBspheres_lambertian_1024s_480x360.png" align="middle" width="500px"/>
+        <figcaption>CBspheres_lambertian.dae</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+
+<!-- <h3>
+  Pick one scene and compare rendered views first with only direct illumination, then only indirect illumination. Use 1024 samples per pixel. (You will have to edit PathTracer::at_least_one_bounce_radiance(...) in your code to generate these views.)
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <figcaption>CBbunny.dae, Direct vs. Indirect Lighting Comparison (1024 samples/pixel, max ray depth = 5, 480x360)</figcaption>
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/CBbunny_direct_only.png" align="middle" width="500px"/>
+        <figcaption>Only direct illumination</figcaption>
+      </td>
+      <td>
+        <img src="images/CBbunny_indirect_only.png" align="middle" width="500px"/>
+        <figcaption>Only indirect illumination</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<p>
+    In the figure above, we see CBbunny.dae rendered once with only direct lighting, and once again with only indirect lighting.
+</p>
+<br>
+
+<!-- <h3>
+  For CBbunny.dae, compare rendered views with max_ray_depth set to 0, 1, 2, 3, and 100 (the -m flag). Use 1024 samples per pixel.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <table style="width:100%">
+    <figcaption>CBbunny.dae rendered with different max ray depths, 1024 samples/pixel.</figcaption>
+    <tr align="center">
+      <td>
+        <img src="images/bunny_0m.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 0 (CBbunny.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/bunny_1m.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 1 (CBbunny.dae)</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/bunny_3m.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 3 (CBbunny.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/bunny_100m.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 100 (CBbunny.dae)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<div>
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/bunny_100m.png" align="middle" width="400px"/>
+        <figcaption>max_ray_depth = 100 (CBbunny.dae)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<p>
+    In the series of images above, we can see that increasing the ray depth increases the overall brightness of the image. Note that 
+    at ray depth = 0, the scene is rendered with only the zero bounce radiance. Similarly, at ray depth = 1, the scene is rendered with 
+    only direct lighting. At ray depths greater than one, indirect lighting is included.
+</p>
+<br>
+
+<!-- <h3>
+  Pick one scene and compare rendered views with various sample-per-pixel rates, including at least 1, 2, 4, 8, 16, 64, and 1024. Use 4 light rays.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <table style="width:100%">
+    <figcaption>CBbunny.dae rendered with different sample rates (max ray depth = 3, 4 samples/light)</figcaption>
+    <tr align="center">
+      <td>
+        <img src="images/bunny_1s3m.png" align="middle" width="400px"/>
+        <figcaption>1 sample per pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/bunny_2s3m.png" align="middle" width="400px"/>
+        <figcaption>2 samples per pixel</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/bunny_4s3m.png" align="middle" width="400px"/>
+        <figcaption>4 samples per pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/bunny_8s3m.png" align="middle" width="400px"/>
+        <figcaption>8 samples per pixel</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/bunny_16s3m.png" align="middle" width="400px"/>
+        <figcaption>16 samples per pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/bunny_64s3m.png" align="middle" width="400px"/>
+        <figcaption>64 samples per pixel</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<div>
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/bunny_1024s3m.png" align="middle" width="400px"/>
+        <figcaption>1024 samples per pixel</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+<p>
+    In the above series of images above, we can see that increasing the sample rate decreases the amount of noise in the image.
+</p>
+<br>
+
+
+<h2 align="middle">Part 5: Adaptive Sampling</h2>
+<!-- Explain adaptive sampling. Walk through your implementation of the adaptive sampling.
+Pick one scene and render it with at least 2048 samples per pixel. Show a good sampling rate image with clearly visible differences in sampling rate over various regions and pixels. Include both your sample rate image, which shows your how your adaptive sampling changes depending on which part of the image you are rendering, and your noise-free rendered result. Use 1 sample per light and at least 5 for max ray depth. -->
+
+<!-- <h3>
+  Explain adaptive sampling. Walk through your implementation of the adaptive sampling.
+</h3> -->
+<p>
+  As shown above, in order to decrease the amount of noise in our renders we simply need to increase the sample rate. However, 
+  sampling at a fixedly high rate for every single pixel is not cost efficient, as some pixels converge earlier than others. Adaptive 
+  sampling solves this issue by letting us concentrate the samples on the most complicated parts of the image. To implement this we check
+  for convergence every 32 samples using the convergence variable <m1><i>I</i></m1> defined as such:
+</p>
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/as_math_1.png" align="middle" width="400px"/>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+  In this case <m1><i>&sigma;</i></m1> represents the standard deviation of our samples so far, while <m1><i>&mu;</i></m1> represents their mean. 
+  We can calculate <m1><i>&sigma;</i></m1> and <m1><i>&mu;</i></m1> using values <c1>s1</c1> and <c1>s2</c1> which represent the sum of 
+  <m1>x<sub>k</sub></m1> and <m1>x<sub>k</sub><sup>2</sup></m1>, respectively, where <m1>x<sub>k</sub></m1> is the illuminance value of a sample.
+</p>
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/as_math_3.png" align="middle" width="300px"/>
+      </td>
+      <td>
+        <img src="images/as_math_4.png" align="middle" width="400px"/>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+  By updating <c1>s1</c1> and <c1>s2</c1> at every sample we can immediately calculate <m1><i>&sigma;</i></m1>, <m1><i>&mu;</i></m1>, and <m1><i>I</i></m1>. We know 
+  that a pixel has converged if the convergence variable <m1><i>I</i></m1> satisfies the inequality below:
+</p>
+<div align="middle">
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/as_math_2.png" align="middle" width="300px"/>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+  Once we've confirmed that a pixel has converged we stop sampling. Below are scenes that have been rendered with adaptive sampling. For 
+  these images we use a <c1>maxTolerance</c1> of <c1>0.05</c1>. Red indicates a high sampling rate, while blue indicates a low sampling rate.
+  Sampling rates are computed as the ratio between the actual number of samples and the maximum number of samples allowed. 
+</p>
+<br>
+
+<!-- <h3>
+  Pick two scenes and render them with at least 2048 samples per pixel. Show a good sampling rate image with clearly visible differences in sampling rate over various regions and pixels. Include both your sample rate image, which shows your how your adaptive sampling changes depending on which part of the image you are rendering, and your noise-free rendered result. Use 1 sample per light and at least 5 for max ray depth.
+</h3> -->
+<!-- Example of including multiple figures -->
+<div align="middle">
+  <figcaption>CBspheres_lambertian.dae and wall-e.dae (2048 samples/pixel, max ray depth = 5, 1 sample/light, 480x360)</figcaption>
+  <table style="width:100%">
+    <tr align="center">
+      <td>
+        <img src="images/cbspheres_adaptive.png" align="middle" width="450px"/>
+        <figcaption>Rendered image (CBspheres_lambertian.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/cbspheres_adaptive_rate.png" align="middle" width="450px"/>
+        <figcaption>Sample rate image (CBspheres_lambertian.dae)</figcaption>
+      </td>
+    </tr>
+    <tr align="center">
+      <td>
+        <img src="images/wall-e_adaptive.png" align="middle" width="450px"/>
+        <figcaption>Rendered image (wall-e.dae)</figcaption>
+      </td>
+      <td>
+        <img src="images/wall-e_adaptive_rate.png" align="middle" width="450px"/>
+        <figcaption>Sample rate image (wall-e.dae)</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<br>
+
+
+</body>
 </html>
