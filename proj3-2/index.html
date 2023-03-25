@@ -1,7 +1,288 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    /* div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    } */
+    body {
+        background-color: white;
+        padding: 100px;
+        width: 1000px;
+        margin: auto;
+        text-align: left;
+        font-weight: 300;
+        font-family: 'Open Sans', sans-serif;
+        color: #121212;
+    }
+    h1, h2, h3, h4 {
+        font-family: 'Source Sans Pro', sans-serif;
+    }
+    m1 {
+        font-family:'Times New Roman', Times, serif;
+        font-size: 18px;
+    }
+    c1 {
+        font-family:'Courier New', Courier, monospace;
+    }
+</style> 
+<title>Your Name  |  CS 184</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+
+<body>
+
+<br/>
+<h1 align="middle">Assignment 3-2: Additional Features to PathTracer</h1>
+    <h2 align="middle">Tyler Bhadra, Victor Zhang</h2>
+    <!-- <h2 align="middle">(Webpage URL)</h2> -->
+
+    <div class="padded">
+
+        
+        <!-- * NOTE: For this project, you will choose TWO out of the four given parts to complete. One of those parts must be Part 1 or Part 2. In other words, you can choose any combination of two parts except the pair (Part 3, Part 4). -->
+
+
+        <h3 align="middle">Part 1. Mirror and Glass Materials</h3>
+
+        <!-- <p><b>
+            Show a sequence of six images of scene `CBspheres.dae` rendered with `max_ray_depth` set to 0, 1, 2, 3, 4, 5, and 100. The other settings should be at least 64 samples per pixel and 4 samples per light. Make sure to include all screenshots.
+        </b></p> -->
+        <p>
+            <!-- Your response goes here. -->
+            <div align="middle">
+                <table style="width:100%">
+                  <tr align="center">
+                    <td>
+                      <img src="images/CBspheres_m0.png" align="middle" width="350px"/>
+                      <figcaption>0 depth</figcaption>
+                    </td>
+                    <td>
+                      <img src="images/CBspheres_m1.png" align="middle" width="350px"/>
+                      <figcaption>1 depth</figcaption>
+                    </td>
+                  </tr>
+                  <tr align="center">
+                    <td>
+                      <img src="images/CBspheres_m2.png" align="middle" width="350px"/>
+                      <figcaption>2 depth</figcaption>
+                    </td>
+                    <td>
+                      <img src="images/CBspheres_m3.png" align="middle" width="350px"/>
+                      <figcaption>3 depth</figcaption>
+                    </td>
+                  </tr>
+                  <tr align="center">
+                    <td>
+                        <img src="images/CBspheres_m4.png" align="middle" width="350px"/>
+                        <figcaption>4 depth</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/CBspheres_m5.png" align="middle" width="350px"/>
+                        <figcaption>5 depth</figcaption>
+                    </td>
+                  </tr>
+                  
+                </table>
+                <table style = "width:100%">
+                    <tr align="center">
+                        <td>
+                            <img src="images/CBspheres_m100.png" align="middle" width="350px"/>
+                            <figcaption>100 depth</figcaption>
+                        </td>
+                      </tr>
+                </table>
+              </div>
+        </p>
+        <br>
+        <p><b>
+            <!-- Point out the new multibounce effects that appear in each image.  -->
+        </b></p>
+        <p>
+            Starting with 0 max ray depth, we see that the image consists of only the zero bounce illumination. At 1 depth, the walls and floor are illuminated. The spheres are mostly black with the left sphere fully reflecting the rays from the light whereas the right sphere absorbs some of them due to being made of glass. At 2 depth, the box gets brighter and now light that bounces off the sides of the box can reflect off the left sphere and form an image that resembles that of the previous depth level. The right sphere is still mostly dark but you can make out the features and colors of the box. At 3 depth, the ceiling is illuminated on the left sphere and the right sphere now has visible reflections/refractions. It also has a "glare" on the floor from light refracting through the sphere and reflecting off the floor. The reflection of the right sphere on the left sphere shows the sphere as solid black. At 4 depth, the reflection of the right sphere on the left sphere is now colored and the right sphere now refracts some light onto the blue wall. At depths 5 and 100, the changes are hard to notice at this number of camera rays per pixel. It somewhat seems like the reflection of the right sphere in the left sphere gets slightyly shinier as the depth goes up.
+        </p>
+        <br>
+        <p><b>
+            <!-- Explain how these bounce numbers relate to the particular effects that appear. Make sure to include all screenshots. -->
+        </b></p>
+        <p>
+            These effects corresponding to these max ray depths make sense if you count the number of reflections/refractions. With 0, there are no reflections or refractions so the room is dark. At 1 depth, the colors of the walls are visible because rays can bounce off of them but the spheres are black since they can only reflect light that directly reflects from the light. Images of the room are visible at depth 2 because light bounces off the floor/walls, hits the spheres and reflects to the camera, though the right sphere is darker due to most the light being lost to refraction and not having enough remaining depth to exit the sphere. At 3 depth, light can now hit a wall, enter the right glass sphere, and exit the sphere towards the camera. The glare on the floor is from the rays entering the sphere, exiting the sphere, and then reflecting off the floor towards the camera. At 4 depth, the floor glare light rays can reflect towards the wall and then reflect off the wall towards the camera. Light rays can also reflect off the blue wall, enter the glass sphere, exit the glass sphere, and reflect off the left mirror sphere which allows the reflection of the glass sphere on the left mirror sphere to appear to have color. At even higher max ray depths, the light rays can bounce more times before entering the glass sphere, and exiting the sphere to bounce off the mirror sphere, which contributes towards the slight increase in shininess of the reflection of the glass sphere on the mirror sphere.
+        </p>
+        <br>
+
+
+        <!-- <h3 align="middle">Part 2. Microfacet Material</h3>
+        <p><b>
+            Show a screenshot sequence of 4 images of scene `CBdragon_microfacet_au.dae` rendered with $\alpha$ set to 0.005, 0.05, 0.25 and 0.5. The other settings should be at least 128 samples per pixel and 1 samples per light. The number of bounces should be at least 5. Describe the differences between different images. Note that, to change the $\alpha$, just open the .dae file and search for `microfacet`.
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br>
+        <p><b>
+            Show two images of scene `CBbunny_microfacet_cu.dae` rendered using cosine hemisphere sampling (default) and your importance sampling. The sampling rate should be fixed at 64 samples per pixel and 1 samples per light. The number of bounces should be at least 5. Briefly discuss their difference.
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br>
+        <p><b>
+            Show at least one image with some other conductor material, replacing `eta` and `k`. Note that you should look up values for real data rather than modifying them arbitrarily. Tell us what kind of material your parameters correspond to. 
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br> -->
+        
+        
+        
+
+        <!-- <h3 align="middle">Part 3. Environment Lightl</h3>
+        <b>Pick one *.exr* file to use for all subparts here. Include a converted *.jpg* of it in your website so we know what map you are using.</b>
+        
+        <p><b>
+            In a few sentences, explain the ideas behind environment lighting (i.e. why we do it/how it works).
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br>
+        <p><b>
+            Show the *probability_debug.png* file for the *.exr* file you are using, generated using the `save_probability_debug()` helper function after initializing your probability distributions.
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br>
+        <p><b>
+            Use the `bunny_unlit.dae` scene and your environment map *.exr* file and render two pictures, one with uniform sampling and one with importance sampling. Use 4 samples per pixel and 64 samples per light in each. Compare noise levels. Make sure to include all screenshots.
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br>
+        <p><b>
+            Use a different image (if you did part 2, we recommend `bunny_microfacet_cu_unlit.dae`) and your environment map *.exr* file and render two pictures, one with uniform sampling and one with importance sampling. Use 4 samples per pixel and 64 samples per light in each. Compare noise levels. Make sure to include all screenshots.
+        </b></p>
+        <p>
+            Your response goes here.
+        </p>
+        <br> -->
+
+
+
+        <h3 align="middle">Part 4. Depth of Field</h3>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/CBLucy_1024s.png" align="middle" width="450px"/>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <!-- <b>
+            For these subparts, we recommend using a microfacet BSDF scene to show off the cool out of focus effects you can get with depth of field!
+        </b>
+        <p><b>
+            In a few sentences, explain the differences between a pinhole camera model and a thin-lens camera model. 
+        </b></p> -->
+        <p>
+            In our original implementation of the pathtracer renderer we used an ideal pinhole camera model, where all light rays contributing to
+            the radiance at the point <c1>pFilm</c1> on the image plane converge at a single point (Point <c1>(0,0,0)</c1> in camera space or the center
+            of the lens in the thin lens model). This has the effect of keeping everything in focus. However, this is not how cameras work in
+            the real world. Instead, there is a lens or finite aperture defined by a <c1>lensRadius</c1>. With this model, <c1>pFilm</c1> receives
+            radiance from any point on the thin lens (i.e. a point <c1>pLens</c1> on the lens "disk" that we sample), rather than just one as in the pinhole
+            model. Additionally, with the lens model, only scene objects that are within a plane that is at <c1>focalDistance</c1> from the lens will be in focus.
+            Everything else will be blurry to some extent.
+        </p>
+        <br>
+
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <figcaption>The thin lens, ray generation model.</figcaption>
+                        <img src="images/ThinLensModel.png" align="middle" width="500px"/>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- <p><b>
+            Show a "focus stack" where you focus at 4 visibly different depths through a scene. Make sure to include all screenshots.
+        </b></p> -->
+        <p>
+            Below are four images of <c1>CBDragon.dae</c1> rendered with the <c1>MirrorBSDF</c1> at a constant lens radius of <c1>0.05</c1>, and 
+            focal distances of <c1>1.3</c1>, <c1>1.5</c1>, <c1>1.7</c1>, and <c1>1.9</c1>. As we increase the focal distance we can see that the 
+            part of the dragon that is in focus moves from the tip of its nose to the end of its tail.
+        </p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/CBDragon_focalDist_1.319244.png" align="middle" width="400px"/>
+                        <figcaption>focal distance = 1.3</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/CBDragon_focalDist_1.519244.png" align="middle" width="400px"/>
+                        <figcaption>focal distance = 1.5</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/CBDragon_focalDist_1.719244.png" align="middle" width="400px"/>
+                        <figcaption>focal distance = 1.7</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/CBDragon_focalDist_1.919244.png" align="middle" width="400px"/>
+                        <figcaption>focal distance = 1.9</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <br>
+        <!-- <p><b>
+            Show a sequence of 4 pictures with visibly different aperture sizes, all focused at the same point in a scene. Make sure to include all screenshots.
+        </b></p> -->
+        <p>
+            Below are four images of <c1>CBLucy.dae</c1> rendered with the <c1>GlassBSDF</c1> at a fixed focal distance of <c1>1.3</c1> (The depth of the head). 
+            As we increase the aperture size, or lens radius, the range of focus become smaller. With a lens radius of <c1>0.0</c1>, we are viewing the scene through 
+            a pinhole camera. Thus, everything is in focus. However, as we start to increase the lens radius, objects farther away from our point of focus (The head) 
+            begin to become more blurry.
+        </p>
+        <div align="middle">
+            <table style="width:100%">
+                <tr align="center">
+                    <td>
+                        <img src="images/CBLucy_lensRadius_0.0.png" align="middle" width="400px"/>
+                        <figcaption>lens radius = 0.0</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/CBLucy_lensRadius_0.05.png" align="middle" width="400px"/>
+                        <figcaption>lens radius = 0.05</figcaption>
+                    </td>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <img src="images/CBLucy_lensRadius_1.0.png" align="middle" width="400px"/>
+                        <figcaption>lens radius = 1.0</figcaption>
+                    </td>
+                    <td>
+                        <img src="images/CBLucy_lensRadius_1.5.png" align="middle" width="400px"/>
+                        <figcaption>lens radius = 1.5</figcaption>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <br>
+
+    </div>
+    
+</body>
 </html>
+
