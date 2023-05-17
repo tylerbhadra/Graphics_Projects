@@ -29,10 +29,21 @@
 
 <body>
 	<div align="middle">
-		<a href="/Pathtracer/Pathtracer_1/index.html">Part 1: Tracing Rays, Acceleration Structures, and Illumination</a>
+		<a href="/Pathtracer_1/index.html">Part 1: Tracing Rays, Acceleration Structures, and Illumination</a>
 		<br><br>
-		<a href="/Pathtracer/Pathtracer_2/index.html">Part 2: Camera Lenses and Materials</a>
+		<a href="/Pathtracer_2/index.html">Part 2: Camera Lenses and Materials</a>
 	</div>
 </body>
+
+<script>
+	var links = document.body.getElementsByTagName("a")
+	var a = window.location.href.indexOf(".io")
+	var repo_name = window.location.href.substring(a+3)
+	for(var i = 0; i < links.length; i++){
+		var link = links[i]
+		var actual_name = link.href.substring(link.href.indexOf(".io")+4)
+		link.href = repo_name + actual_name
+	}
+</script>
 
 </html>
